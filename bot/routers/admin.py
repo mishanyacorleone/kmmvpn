@@ -32,6 +32,7 @@ class AddServerStates(StatesGroup):
     waiting_for_panel_port = State()
     waiting_for_username = State()
     waiting_for_password = State()
+    waiting_for_panel_path = State()
     waiting_for_inbound_id = State()
     waiting_for_max_clients = State()
 
@@ -237,8 +238,25 @@ async def fsm_server_username(message: Message, state: FSMContext) -> None:
 @router.message(AddServerStates.waiting_for_password)
 async def fsm_server_password(message: Message, state: FSMContext) -> None:
     await state.update_data(panel_password=message.text.strip())
+    await state.set_state(AddServerStates.waiting_for_panel_path)
+    await message.answer(
+        "Введи базовый URI путь панели."
+        "Смотри адресную строку браузера когда ты в панели:"
+        "<code>https://IP:PORT/ak55PzP0kBhJiILrgp/...</code>"
+        "Вводи только эту часть: <code>/ak55PzP0kBhJiILrgp</code>"
+        "Если кастомного пути нет — введи просто <code>/</code>",
+        parse_mode="HTML",
+    )
+
+
+@router.message(AddServerStates.waiting_for_panel_path)
+async def fsm_server_panel_path(message: Message, state: FSMContext) -> None:
+    path = message.text.strip()
+    if not path.startswith("/"):
+        path = "/" + path
+    await state.update_data(panel_path=path)
     await state.set_state(AddServerStates.waiting_for_inbound_id)
-    await message.answer("Введи ID inbound в x-ui (число, видно в панели):")
+    await message.answer("Введи ID inbound в x-ui (число, видно в списке Inbounds):")
 
 
 @router.message(AddServerStates.waiting_for_inbound_id)
@@ -270,6 +288,7 @@ async def fsm_server_max_clients(
             panel_port=data["panel_port"],
             panel_username=data["panel_username"],
             panel_password=data["panel_password"],
+            panel_path=data["panel_path"],
             inbound_id=data["inbound_id"],
             max_clients=int(message.text.strip()),
         )

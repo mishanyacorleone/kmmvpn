@@ -7,7 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    func
+    func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -42,16 +42,19 @@ class Server(Base):
     __tablename__ = "servers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(64), nullable=False)
-    host: Mapped[str] = mapped_column(String(256), nullable=False)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)  # "Нидерланды 1"
+    host: Mapped[str] = mapped_column(String(256), nullable=False)  # IP или домен
     panel_port: Mapped[int] = mapped_column(Integer, nullable=False)
     panel_username: Mapped[str] = mapped_column(String(64), nullable=False)
     panel_password: Mapped[str] = mapped_column(String(256), nullable=False)
+    panel_path: Mapped[str] = mapped_column(String(256), nullable=False, default="/")
     inbound_id: Mapped[int] = mapped_column(Integer, nullable=False)
     max_clients: Mapped[int] = mapped_column(Integer, default=20)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
     connections: Mapped[list["Connection"]] = relationship(
         back_populates="server", cascade="all, delete-orphan"
     )
@@ -63,9 +66,12 @@ class Connection(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     server_id: Mapped[int] = mapped_column(ForeignKey("servers.id"), nullable=False)
-    xui_client_uuid: Mapped[str] = mapped_column(String(36), nullable=False)
+    xui_client_uuid: Mapped[str] = mapped_column(String(36), nullable=False)  # uuid клиента в x-ui
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
     user: Mapped["User"] = relationship(back_populates="connections")
     server: Mapped["Server"] = relationship(back_populates="connections")
 
@@ -81,6 +87,6 @@ class Payment(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
- 
+
     user: Mapped["User"] = relationship(back_populates="payments")
     

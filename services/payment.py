@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import time
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,7 +51,7 @@ class StubPaymentProvider(AbstractPaymentProvider):
         telegram_id: int,
         description: str
     ) -> PaymentCreateResult:
-        stub_id = f"stub_{telegram_id}_{amount_rub}"
+        stub_id = f"stub_{telegram_id}_{time.time()}"
         logger.info("STUB: создан тестовый платёж %s", stub_id)
         return PaymentCreateResult(
             payment_id=stub_id,
