@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VPN Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    :root {
+      --bg: #080810;
+      --surface: #0e0e1a;
+      --surface2: #141420;
+      --border: #1e1e30;
+      --border2: #252538;
+      --accent: #7c6aff;
+      --accent2: #a78bfa;
+      --green: #22d3a0;
+      --red: #ff4d6a;
+      --yellow: #fbbf24;
+      --text: #e2e2f0;
+      --text2: #8888aa;
+      --text3: #55556a;
+      --mono: 'JetBrains Mono', monospace;
+      --display: 'Unbounded', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    /* Сетка шума */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #root { position: relative; z-index: 1; }
+
+    /* Login */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box {
+      width: 360px;
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 40px;
+      background: var(--surface);
+      position: relative;
+    }
+
+    .login-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+    }
+
+    .login-title {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .login-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-bottom: 32px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .field-label {
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .field-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 20px;
+    }
+
+    .field-input:focus { border-color: var(--accent); }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 20px;
+      border-radius: 3px;
+      border: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: white;
+      width: 100%;
+    }
+
+    .btn-accent:hover { background: var(--accent2); }
+    .btn-accent:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--red);
+      border: 1px solid var(--red);
+      font-size: 11px;
+      padding: 6px 12px;
+    }
+
+    .btn-danger:hover { background: var(--red); color: white; }
+
+    .btn-sm {
+      font-size: 11px;
+      padding: 6px 12px;
+    }
+
+    .error-msg {
+      color: var(--red);
+      font-size: 11px;
+      margin-top: -12px;
+      margin-bottom: 16px;
+    }
+
+    /* Layout */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 200px;
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: var(--surface);
+    }
+
+    .sidebar-logo {
+      font-family: var(--display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      color: var(--accent2);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      cursor: pointer;
+      color: var(--text3);
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-item:hover { color: var(--text2); background: var(--surface2); }
+
+    .nav-item.active {
+      color: var(--accent2);
+      border-left-color: var(--accent);
+      background: var(--surface2);
+    }
+
+    .nav-icon { font-size: 14px; }
+
+    .sidebar-bottom {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Main */
+    .main {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    .page-title {
+      font-family: var(--display);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.3;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: var(--display);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .stat-value.green { color: var(--green); }
+    .stat-value.accent { color: var(--accent2); }
+    .stat-value.yellow { color: var(--yellow); }
+
+    /* Table */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text2);
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 10px 20px;
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+    }
+
+    td {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text2);
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+
+    .td-main { color: var(--text); font-weight: 500; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 2px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .badge-green { background: rgba(34,211,160,0.1); color: var(--green); }
+    .badge-red { background: rgba(255,77,106,0.1); color: var(--red); }
+    .badge-yellow { background: rgba(251,191,36,0.1); color: var(--yellow); }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-red { background: var(--red); }
+
+    /* Actions */
+    .actions { display: flex; gap: 8px; align-items: center; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 32px;
+      width: 440px;
+      position: relative;
+    }
+
+    .modal::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+    }
+
+    .modal-title {
+      font-family: var(--display);
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 24px;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    /* Broadcast */
+    .broadcast-area {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      padding: 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      resize: vertical;
+      min-height: 120px;
+      outline: none;
+      margin-bottom: 16px;
+    }
+
+    .broadcast-area:focus { border-color: var(--accent); }
+
+    /* Progress bar */
+    .progress {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      transition: width 0.3s;
+    }
+
+    /* Users search */
+    .search-input {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: 3px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      outline: none;
+      width: 240px;
+    }
+
+    .search-input:focus { border-color: var(--accent); }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      color: var(--text3);
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 12px 16px;
+      font-size: 12px;
+      z-index: 200;
+      animation: slideIn 0.2s ease;
+    }
+
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--red); }
+
+    @keyframes slideIn {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .bytes { font-size: 11px; color: var(--text3); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const API = '';  // относительные пути — работает и на IP и на домене
+
+// ── API клиент ────────────────────────────────────────────────────────────────
+
+async function api(method, path, body, token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${API}/admin${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function Toast({ msg, type, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, []);
+  return <div className={`toast ${type}`}>{msg}</div>;
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+
+function Login({ onLogin }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const data = await api('POST', '/auth/login', { password });
+      onLogin(data.access_token);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="login-wrap">
+      <form className="login-box" onSubmit={handleLogin}>
+        <div className="login-title">VPN Admin</div>
+        <div className="login-sub">Панель управления</div>
+        <div className="field-label">Пароль</div>
+        <input
+          className="field-input"
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="••••••••"
+          autoFocus
+        />
+        {error && <div className="error-msg">{error}</div>}
+        <button className="btn btn-accent" type="submit" disabled={loading}>
+          {loading ? 'Вход...' : 'Войти →'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+function StatsPage({ token }) {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    api('GET', '/stats', null, token).then(setStats).catch(console.error);
+  }, [token]);
+
+  if (!stats) return <div className="loading"><div className="spinner"/>Загрузка...</div>;
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">Обзор</div>
+      </div>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-label">Всего пользователей</div>
+          <div className="stat-value accent">{stats.total_users}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">С подпиской</div>
+          <div className="stat-value green">{stats.subscribed_users}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Активных серверов</div>
+          <div className="stat-value yellow">{stats.active_servers}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Servers ───────────────────────────────────────────────────────────────────
+
+function AddServerModal({ token, onClose, onAdded, toast }) {
+  const [form, setForm] = useState({
+    name: '', host: '', panel_port: '', panel_username: '',
+    panel_password: '', panel_path: '/', inbound_id: '', max_clients: '20',
+  });
+  const [loading, setLoading] = useState(false);
+
+  function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api('POST', '/servers', {
+        ...form,
+        panel_port: parseInt(form.panel_port),
+        inbound_id: parseInt(form.inbound_id),
+        max_clients: parseInt(form.max_clients),
+      }, token);
+      toast('Сервер добавлен', 'success');
+      onAdded();
+      onClose();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const fields = [
+    { key: 'name', label: 'Название', placeholder: 'Нидерланды 1' },
+    { key: 'host', label: 'IP адрес', placeholder: '1.2.3.4' },
+    { key: 'panel_port', label: 'Порт панели', placeholder: '17171' },
+    { key: 'panel_username', label: 'Логин панели', placeholder: 'admin' },
+    { key: 'panel_password', label: 'Пароль панели', placeholder: '••••••••', type: 'password' },
+    { key: 'panel_path', label: 'Путь панели', placeholder: '/abc123' },
+    { key: 'inbound_id', label: 'Inbound ID', placeholder: '1' },
+    { key: 'max_clients', label: 'Макс. клиентов', placeholder: '20' },
+  ];
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <form className="modal" onSubmit={handleSubmit}>
+        <div className="modal-title">Добавить сервер</div>
+        {fields.map(f => (
+          <div key={f.key}>
+            <div className="field-label">{f.label}</div>
+            <input
+              className="field-input"
+              type={f.type || 'text'}
+              value={form[f.key]}
+              onChange={e => set(f.key, e.target.value)}
+              placeholder={f.placeholder}
+            />
+          </div>
+        ))}
+        <div className="modal-footer">
+          <button className="btn btn-accent" type="submit" disabled={loading} style={{flex:1}}>
+            {loading ? 'Добавляю...' : 'Добавить'}
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={onClose}>Отмена</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ServersPage({ token, toast }) {
+  const [servers, setServers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api('GET', '/servers', null, token)
+      .then(setServers)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleToggle(id) {
+    try {
+      await api('PATCH', `/servers/${id}/toggle`, null, token);
+      load();
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  async function handleDelete(id, name) {
+    if (!confirm(`Удалить сервер «${name}»?`)) return;
+    try {
+      await api('DELETE', `/servers/${id}`, null, token);
+      toast('Сервер удалён', 'success');
+      load();
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">Серверы</div>
+        <button className="btn btn-accent btn-sm" onClick={() => setShowAdd(true)}>
+          + Добавить
+        </button>
+      </div>
+      <div className="table-wrap">
+        {loading ? (
+          <div className="loading"><div className="spinner"/>Загрузка...</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Статус</th>
+                <th>Название</th>
+                <th>Хост</th>
+                <th>Клиенты</th>
+                <th>Трафик ↑/↓</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {servers.map(s => (
+                <tr key={s.id}>
+                  <td>
+                    <span className={`dot ${s.online && s.is_active ? 'dot-green' : 'dot-red'}`}/>
+                  </td>
+                  <td className="td-main">{s.name}</td>
+                  <td><span style={{color:'var(--text3)'}}>{s.host}</span></td>
+                  <td>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div className="progress" style={{width:60}}>
+                        <div className="progress-fill" style={{width:`${Math.min(100,(s.current_clients/s.max_clients)*100)}%`}}/>
+                      </div>
+                      <span>{s.current_clients}/{s.max_clients}</span>
+                    </div>
+                  </td>
+                  <td className="bytes">
+                    ↑{formatBytes(s.up_bytes)} ↓{formatBytes(s.down_bytes)}
+                  </td>
+                  <td>
+                    <div className="actions">
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleToggle(s.id)}>
+                        {s.is_active ? 'Откл' : 'Вкл'}
+                      </button>
+                      <button className="btn btn-danger" onClick={() => handleDelete(s.id, s.name)}>
+                        Удалить
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {showAdd && (
+        <AddServerModal
+          token={token}
+          onClose={() => setShowAdd(false)}
+          onAdded={load}
+          toast={toast}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+function UsersPage({ token, toast }) {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [extendModal, setExtendModal] = useState(null);
+  const [days, setDays] = useState('30');
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api('GET', '/users', null, token)
+      .then(setUsers)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = users.filter(u =>
+    !search ||
+    String(u.telegram_id).includes(search) ||
+    (u.username && u.username.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  async function handleExtend(e) {
+    e.preventDefault();
+    try {
+      await api('POST', `/users/${extendModal.telegram_id}/extend`, { days: parseInt(days) }, token);
+      toast('Подписка продлена', 'success');
+      setExtendModal(null);
+      load();
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  async function handleDeactivate(telegramId) {
+    if (!confirm('Деактивировать все подключения пользователя?')) return;
+    try {
+      await api('DELETE', `/users/${telegramId}/connections`, null, token);
+      toast('Подключения деактивированы', 'success');
+    } catch (err) { toast(err.message, 'error'); }
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">Пользователи</div>
+        <input
+          className="search-input"
+          placeholder="Поиск по ID или username..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+      </div>
+      <div className="table-wrap">
+        {loading ? (
+          <div className="loading"><div className="spinner"/>Загрузка...</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Telegram ID</th>
+                <th>Username</th>
+                <th>Подписка</th>
+                <th>Истекает</th>
+                <th>Подключений</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(u => (
+                <tr key={u.id}>
+                  <td className="td-main">{u.telegram_id}</td>
+                  <td>{u.username ? `@${u.username}` : '—'}</td>
+                  <td>
+                    <span className={`badge ${u.has_subscription ? 'badge-green' : 'badge-red'}`}>
+                      {u.has_subscription ? '● Активна' : '○ Нет'}
+                    </span>
+                  </td>
+                  <td>{formatDate(u.subscription_expires_at)}</td>
+                  <td>{u.connections_count}</td>
+                  <td>
+                    <div className="actions">
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setExtendModal(u)}
+                      >
+                        Продлить
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => handleDeactivate(u.telegram_id)}
+                      >
+                        Откл
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {extendModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setExtendModal(null)}>
+          <form className="modal" onSubmit={handleExtend}>
+            <div className="modal-title">Продлить подписку</div>
+            <div style={{color:'var(--text2)',marginBottom:20,fontSize:12}}>
+              Пользователь: {extendModal.username ? `@${extendModal.username}` : extendModal.telegram_id}
+            </div>
+            <div className="field-label">Количество дней</div>
+            <input
+              className="field-input"
+              type="number"
+              value={days}
+              onChange={e => setDays(e.target.value)}
+              min="1"
+            />
+            <div className="modal-footer">
+              <button className="btn btn-accent" type="submit" style={{flex:1}}>Продлить</button>
+              <button className="btn btn-ghost" type="button" onClick={() => setExtendModal(null)}>Отмена</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Broadcast ─────────────────────────────────────────────────────────────────
+
+function BroadcastPage({ token, toast }) {
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+
+  async function handleSend() {
+    if (!text.trim()) return;
+    if (!confirm(`Отправить сообщение всем пользователям?`)) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const data = await api('POST', '/broadcast', { text }, token);
+      setResult(data);
+      toast(`Отправлено: ${data.success}, ошибок: ${data.errors}`, 'success');
+      setText('');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="page-title">Рассылка</div>
+      </div>
+      <div className="table-wrap" style={{padding:24}}>
+        <div className="field-label" style={{marginBottom:8}}>Текст сообщения</div>
+        <textarea
+          className="broadcast-area"
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Введи текст рассылки..."
+        />
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <button
+            className="btn btn-accent"
+            onClick={handleSend}
+            disabled={loading || !text.trim()}
+            style={{width:200}}
+          >
+            {loading ? 'Отправляю...' : '📢 Отправить всем'}
+          </button>
+          {result && (
+            <div style={{fontSize:12,color:'var(--text2)'}}>
+              ✅ {result.success} доставлено
+              {result.errors > 0 && <span style={{color:'var(--red)'}}> · {result.errors} ошибок</span>}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+
+const PAGES = [
+  { id: 'stats',     icon: '◈', label: 'Обзор' },
+  { id: 'servers',   icon: '⬡', label: 'Серверы' },
+  { id: 'users',     icon: '◉', label: 'Пользователи' },
+  { id: 'broadcast', icon: '◎', label: 'Рассылка' },
+];
+
+function App() {
+  const [token, setToken] = useState(() => localStorage.getItem('admin_token'));
+  const [page, setPage] = useState('stats');
+  const [toasts, setToasts] = useState([]);
+
+  function addToast(msg, type = 'success') {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type }]);
+  }
+
+  function removeToast(id) {
+    setToasts(t => t.filter(x => x.id !== id));
+  }
+
+  function handleLogin(t) {
+    localStorage.setItem('admin_token', t);
+    setToken(t);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('admin_token');
+    setToken(null);
+  }
+
+  if (!token) return <Login onLogin={handleLogin} />;
+
+  return (
+    <div className="layout">
+      <nav className="sidebar">
+        <div className="sidebar-logo">VPN·ADMIN</div>
+        {PAGES.map(p => (
+          <div
+            key={p.id}
+            className={`nav-item ${page === p.id ? 'active' : ''}`}
+            onClick={() => setPage(p.id)}
+          >
+            <span className="nav-icon">{p.icon}</span>
+            {p.label}
+          </div>
+        ))}
+        <div className="sidebar-bottom">
+          <button className="btn btn-ghost btn-sm" onClick={handleLogout} style={{width:'100%'}}>
+            Выйти
+          </button>
+        </div>
+      </nav>
+
+      <main className="main">
+        {page === 'stats'     && <StatsPage token={token} toast={addToast} />}
+        {page === 'servers'   && <ServersPage token={token} toast={addToast} />}
+        {page === 'users'     && <UsersPage token={token} toast={addToast} />}
+        {page === 'broadcast' && <BroadcastPage token={token} toast={addToast} />}
+      </main>
+
+      {toasts.map(t => (
+        <Toast key={t.id} msg={t.msg} type={t.type} onClose={() => removeToast(t.id)} />
+      ))}
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>

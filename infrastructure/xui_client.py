@@ -95,7 +95,7 @@ class XUIClient:
                 raise ValueError(f"Ошибка авторизации в x-ui: {data.get('msg')}")
 
             cookies = http_session.cookie_jar.filter_cookies(url)
-            session_cookie = cookies.get("session")
+            session_cookie = cookies.get("3x-ui")
 
             if not session_cookie:
                 raise ValueError("x-ui не вернул session cookie после логина")
@@ -124,7 +124,7 @@ class XUIClient:
         """Выполняет авторизованный запрос к панели."""
         async with aiohttp.ClientSession(connector=self._make_connector()) as http_session:
             cookie = await self._get_cookie(http_session)
-            headers = {"Cookie": f"session={cookie}"}
+            headers = {"Cookie": f"3x-ui={cookie}"}
 
             async with http_session.request(
                 method, url, headers=headers, **kwargs

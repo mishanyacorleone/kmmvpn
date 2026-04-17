@@ -17,6 +17,7 @@ class ServerRepository:
         panel_port: int,
         panel_username: str,
         panel_password: str,
+        panel_path: str,
         inbound_id: int,
         max_clients: int = 20
     ) -> Server:
@@ -27,6 +28,7 @@ class ServerRepository:
             panel_port=panel_port,
             panel_username=panel_username,
             panel_password=panel_password,
+            panel_path=panel_path,
             inbound_id=inbound_id,
             max_clients=max_clients
         )

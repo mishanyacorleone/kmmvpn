@@ -2,12 +2,12 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable
 
+import uvicorn
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import TelegramObject
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.routers import admin, payment, user
 from config import settings
@@ -23,11 +23,6 @@ logger = logging.getLogger(__name__)
 # ── Middleware: инжектит сессию БД в каждый хэндлер ──────────────────────────
 
 class DatabaseMiddleware:
-    """
-    Middleware которая открывает сессию БД на каждый апдейт
-    и передаёт её в хэндлер через data["session"].
-    """
-
     async def __call__(
         self,
         handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
@@ -43,14 +38,27 @@ class DatabaseMiddleware:
 
 def build_dispatcher() -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage())
-
     dp.update.middleware(DatabaseMiddleware())
-
     dp.include_router(user.router)
     dp.include_router(payment.router)
     dp.include_router(admin.router)
-
     return dp
+
+
+# ── Запуск FastAPI ────────────────────────────────────────────────────────────
+
+async def start_web() -> None:
+    """Запускает FastAPI сервер в фоне."""
+    from web.server import app
+
+    config = uvicorn.Config(
+        app=app,
+        host="0.0.0.0",
+        port=settings.web_port,
+        log_level="warning",
+    )
+    server = uvicorn.Server(config)
+    await server.serve()
 
 
 # ── Точка входа ───────────────────────────────────────────────────────────────
@@ -67,15 +75,19 @@ async def main() -> None:
     )
     dp = build_dispatcher()
 
-    # Удаляем вебхук если был установлен и чистим очередь апдейтов
     await bot.delete_webhook(drop_pending_updates=True)
 
-    logger.info("Бот запущен. Слушаю апдейты...")
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
-        logger.info("Бот остановлен")
+    # Передаём bot в админку для рассылки
+    from web.admin.routes import set_bot
+    set_bot(bot)
+
+    logger.info("Бот и веб-сервер запущены")
+
+    # Запускаем бота и веб-сервер параллельно
+    await asyncio.gather(
+        dp.start_polling(bot),
+        start_web(),
+    )
 
 
 if __name__ == "__main__":
