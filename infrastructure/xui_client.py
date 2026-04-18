@@ -4,11 +4,12 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from urllib.parse import urlencode, quote
-
+import logging
 import aiohttp
 
 from config import settings
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class XUIClientConfig:
@@ -90,17 +91,22 @@ class XUIClient:
         async with http_session.post(url, json=payload) as response:
             response.raise_for_status()
             data = await response.json()
-
+            logger.info("LOGIN url=%s status=%d set-cookie=%s", url, response.status, response.headers.get("Set-Cookie", ""))
             if not data.get("success"):
                 raise ValueError(f"Ошибка авторизации в x-ui: {data.get('msg')}")
+            set_cookie = response.headers.get("Set-Cookie", "")
+            for part in set_cookie.split(";"):
+                part = part.strip()
+                if part.startswith("3x-ui="):
+                    return part[len("3x-ui="):]
+            raise ValueError("x-ui не вернул session cookie после логина")
+            # cookies = http_session.cookie_jar.filter_cookies(url)
+            # session_cookie = cookies.get("3x-ui")
+            
+            #if not session_cookie:
+            #    raise ValueError("x-ui не вернул session cookie после логина")
 
-            cookies = http_session.cookie_jar.filter_cookies(url)
-            session_cookie = cookies.get("3x-ui")
-
-            if not session_cookie:
-                raise ValueError("x-ui не вернул session cookie после логина")
-
-            return session_cookie.value
+            #return session_cookie.value
 
     async def _get_cookie(self, http_session: aiohttp.ClientSession) -> str:
         """Возвращает актуальный cookie, логинится если истёк."""
